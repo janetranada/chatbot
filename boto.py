@@ -3,6 +3,7 @@ This is the template server side for ChatBot
 """
 from bottle import route, run, template, static_file, request
 import json
+import chat_handler
 
 
 @route('/', method='GET')
@@ -13,7 +14,8 @@ def index():
 @route("/chat", method='POST')
 def chat():
     user_message = request.POST.get('msg')
-    return json.dumps({"animation": "inlove", "msg": user_message})
+    boto_response, boto_action = chat_handler.process_user_msg(user_message)
+    return json.dumps({"animation": boto_action, "msg": boto_response})
 
 
 @route("/test", method='POST')

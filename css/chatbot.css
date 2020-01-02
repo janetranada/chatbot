@@ -115,6 +115,7 @@ body{
 }
 
 .copyright{
+    font-size: 0.7rem;
     position: fixed;
     bottom: 0px;
     left: 0px;
