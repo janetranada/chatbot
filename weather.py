@@ -6,10 +6,8 @@ def get_weather(city):
     APIKEY = api_keys.WEATHER_KEY
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid={APIKEY}"
     response = requests.get(url)
-    # print("response>>", response)
     if response:
         resp_json = response.json()
-        print(resp_json)
         country = country_codes[resp_json["sys"]["country"]]
         weather_description = resp_json["weather"][0]["description"]
         actual_temp = resp_json["main"]["temp"]
@@ -259,4 +257,4 @@ country_codes = {'AF': 'Afghanistan',
                  'YE': 'Yemen',
                  'ZM': 'Zambia',
                  'ZW': 'Zimbabwe'
-}
+                 }
