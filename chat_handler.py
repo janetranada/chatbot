@@ -6,22 +6,18 @@ import ny_times
 import weather
 
 
-def random_reply(reply_list):
-    reply_index = random.randint(0, len(reply_list) - 1)
-    return reply_list[reply_index].capitalize()
+def generate_date():
+    random_date_intro = ['Today is', 'The current date is', 'The date today is']
+    now = datetime.now()
+    current_date = now.strftime('%B %d, %Y')
+    return f"{random.choice(random_date_intro)} {current_date}."
 
 
-def remove_special_chars(message):
-    special_chars = [';', ':', '!', "*", ",", ".", "/", "@", "'", "#", "$", "%", "^", "&", "(", ")"]
-    clean_message = "".join(char for char in message if char not in special_chars)
-    return clean_message
-
-
-def greet_user(message):
-    message_to_list = message.split(" ")
-    user_name = message_to_list[-1].capitalize()
-    positive_emotion = generate_emotion(animation['positive_mood'])
-    return f"Hello {user_name}. {random_reply(introduction_reply)}!", positive_emotion
+def generate_datetime():
+    now = datetime.now()
+    current_time = now.strftime('%H:%M:%S')
+    current_date = now.strftime('%B %d, %Y')
+    return f"The current time is {current_time}. Just a reminder, today is {current_date}."
 
 
 def generate_emotion(mood):
@@ -46,28 +42,30 @@ def generate_joke():
     return f"Here's a joke for you: \"{random_joke}\"", emotion
 
 
-def generate_datetime():
-    now = datetime.now()
-    current_time = now.strftime('%H:%M:%S')
-    current_date = now.strftime('%B %d, %Y')
-    return f"The current time is {current_time}. Just a reminder, today is {current_date}."
-
-
-def handle_profanity():
-    negative_emotion = generate_emotion(animation['negative_mood'])
-    return f"Dude, bad words are not allowed!", negative_emotion
-
-
-def handle_optimism():
-    reply_options = ["That is awesome!", "That's great!", "Oh... Lovely!", "That's wonderful!"]
+def generate_quote():
+    global recent_quotes
+    with open("quotes.csv", "r") as file:
+        lines = file.read().splitlines()
     positive_emotion = generate_emotion(animation['positive_mood'])
-    random_answer = random.choice(reply_options)
-    return random_answer, positive_emotion
+    random_quote = random.choice(lines)
+    if len(recent_quotes) == 10:
+        recent_quotes.pop(0)
+    if random_quote not in recent_quotes:
+        recent_quotes.append(random_quote)
+        return f"Here's a quote for you: '{random_quote}'", positive_emotion
+    else:
+        return generate_quote()
+
+def greet_user(message):
+    message_to_list = message.split(" ")
+    user_name = message_to_list[-1].capitalize()
+    positive_emotion = generate_emotion(animation['positive_mood'])
+    return f"Hello {user_name}. {random_reply(introduction_reply)}!", positive_emotion
 
 
-def handle_weather_request(message):
-    city = message.split(": ")[1]
-    return weather.get_weather(city), "takeoff"
+def handle_common_greeting():
+    positive_emotion = generate_emotion(animation['positive_mood'])
+    return f"{random_reply(greetings_reply)}!", positive_emotion
 
 
 def handle_common_question(message):
@@ -86,24 +84,32 @@ def handle_common_question(message):
         return random_answer, positive_emotion
 
 
-def handle_common_greeting():
+def handle_optimism():
+    reply_options = ["That is awesome!", "That's great!", "Oh... Lovely!", "That's wonderful!"]
     positive_emotion = generate_emotion(animation['positive_mood'])
-    return f"{random_reply(greetings_reply)}!", positive_emotion
+    random_answer = random.choice(reply_options)
+    return random_answer, positive_emotion
 
 
-def generate_quote():
-    global recent_quotes
-    with open("quotes.csv", "r") as file:
-        lines = file.read().splitlines()
-    positive_emotion = generate_emotion(animation['positive_mood'])
-    random_quote = random.choice(lines)
-    if len(recent_quotes) == 10:
-        recent_quotes.pop(0)
-    if random_quote not in recent_quotes:
-        recent_quotes.append(random_quote)
-        return f"Here's a quote for you: '{random_quote}'", positive_emotion
-    else:
-        return generate_quote()
+def handle_profanity():
+    negative_emotion = generate_emotion(animation['negative_mood'])
+    return f"Dude, bad words are not allowed!", negative_emotion
+
+
+def handle_weather_request(message):
+    city = message.split(": ")[1]
+    return weather.get_weather(city), "takeoff"
+
+
+def random_reply(reply_list):
+    reply_index = random.randint(0, len(reply_list) - 1)
+    return reply_list[reply_index].capitalize()
+
+
+def remove_special_chars(message):
+    special_chars = [';', ':', '!', "*", ",", ".", "/", "@", "'", "#", "$", "%", "^", "&", "(", ")"]
+    clean_message = "".join(char for char in message if char not in special_chars)
+    return clean_message
 
 
 def process_user_msg(message):
@@ -121,6 +127,8 @@ def process_user_msg(message):
     msg_has_pessimism = any(substring.lower() in message.lower() for substring in pessimistic_strings)
     msg_is_pessimistic = msg_has_pessimism or ('not' in message and msg_has_optimism)
     msg_in_common_questions = any(key in message for key in common_questions.keys())
+    one_word_date = "date" in message and len(cleaned_message) == 4
+    requesting_current_date =  one_word_date or ("date" in message and "today" in message)
 
     if msg_is_common_greeting:
         return handle_common_greeting()
@@ -137,6 +145,8 @@ def process_user_msg(message):
         return ny_times.scrape_ny_times(), 'takeoff'
     elif "time" in message:
         return generate_datetime(), 'money'
+    elif requesting_current_date:
+        return generate_date(), 'dancing'
     elif "quote" in message:
         return generate_quote()
     elif msg_in_common_questions:
@@ -151,12 +161,13 @@ def process_user_msg(message):
     elif msg_has_optimism:
         return handle_optimism()
     elif "?" in message:
-        return f"I'm sorry but I don't understand the question...", "confused"
+        return f"I'm sorry but I don't understand the question..." \
+               f"You can ask me the weather, the current time or date, and the " \
+               f"top news headline. I can also give you a joke or a quote.", "confused"
     elif msg_in_common_intro or msg_possibly_one_word_name:
         return greet_user(cleaned_message)
     else:
-        return f"I'm sorry but I don't know what to say. That message is beyond me... You can ask me the weather, " \
-               f"the time, and the top news headline. I can also give you a joke or a quote.", "confused"
+        return f"Hmmm... I see.", "ok"
 
 
 recent_quotes = []
